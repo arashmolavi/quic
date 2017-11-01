@@ -1,15 +1,13 @@
 ## 	Taking a Long Look at QUIC
 ### An Approach for Rigorous Evaluation of Rapidly Evolving Transport Protocols
 
-
-### About the code:
 **DISCLAIMER I:** this is NOT production level code! It is grad student code (!!!), developed under the pressure of deadlines and such! Furthermore, by nature this project consists of many parts (as described in the following sections), require attention to many small details to make sure things do what we expect them to do, and call for many hacks to make things work. So please do not expect a nice clean binary that you just double click! You need to setup servers, compile Chromium (16GB of code base!!!), etc. I will try to clean the code as much as possible, keep updating these instructions to make it easy to follow, and of course welcome any feedback/comments you have. However, I should also mention that I recently defended my PhD and left NEU for a full time job. So I won’t be maintaining this project full time, but it is being handed off to very talented junior PhD student in our group who will continue on with the project, and overseen by an amazing PI who won’t put anything out there unless he has 100.00% confident in it!
 
 **DISCLAIMER II:** make sure you read and fully understand our IMC17 paper and understand exactly what the experiments try to achieve before trying to run any tests. Otherwise, the instructions below might not make much sense to you!
 
 Ready to get your hands dirty? Enjoy! 😀
 
-
+### About the code:
 #### General notes:
 * Servers side
     * You need to have a HTTP/2 and a QUIC server that can serve your content for the PLT tests. Ideally, run the servers on the same machine. 
@@ -38,11 +36,11 @@ Ready to get your hands dirty? Enjoy! 😀
 * Analyzing results:
     * Once you run QUIC vs. TCP back-to-back tests, there will be a HAR file for every test (quic_1.har, https_1.har, quic_2.har, https_2.har, …).
     * I generate heatmaps (similar to ones in the paper) using the average PLTs extracted from these files.
-    * Note that as explained in the paper, we to a 
 * MISC (but important):
     * Be aware of the policies of the networks you’re running tests with. We’re dealing with micro- and milli-seconds! Network management policies can greatly affect the results. Even at Northeastern, we found that different parts of the network with different policies resulted in vastly different results (in most networks if there are any restrictive policies, they usually target UDP!). So you need to be careful and know exactly how your network is treating your traffic. Ideally you want to run things in a well provisioned (or a testbed) network which doesn’t mess with your traffic.
 Code details:
-Different components:
+
+### Scripts:
 * pythonLib.py: this file contains some functions that I use throughout the project
 * engineChrome.py: this is the script you run on the client side. It opens the browsers, runs the tests, stores the results, … . This script uses Selenium. Remember that I used chrome-har-capturer for the paper. However this script includes functions that the chrome-har-capturer script uses. So it’s important!
     * You obviously need to tell the script the hostname of your servers. This is currently hardcoded in the script (ugh! but you can easily change this to and argument that is passed to the code. Once you get familiar with the code, you realize it is super easy to add arguments and pass them in the command line)
