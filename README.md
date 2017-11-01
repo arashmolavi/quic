@@ -41,11 +41,11 @@ Ready to get your hands dirty? Enjoy! 😀
 Code details:
 
 ### Scripts:
-* pythonLib.py: this file contains some functions that I use throughout the project
-* engineChrome.py: this is the script you run on the client side. It opens the browsers, runs the tests, stores the results, … . This script uses Selenium. Remember that I used chrome-har-capturer for the paper. However this script includes functions that the chrome-har-capturer script uses. So it’s important!
+* **pythonLib.py:** this file contains some functions that I use throughout the project
+* **engineChrome.py:** this is the script you run on the client side. It opens the browsers, runs the tests, stores the results, … . This script uses Selenium. Remember that I used chrome-har-capturer for the paper. However this script includes functions that the chrome-har-capturer script uses. So it’s important!
     * You obviously need to tell the script the hostname of your servers. This is currently hardcoded in the script (ugh! but you can easily change this to and argument that is passed to the code. Once you get familiar with the code, you realize it is super easy to add arguments and pass them in the command line)
     * To give the server hostname, search for "Setting up the server hostnames” in the script. There is if/else clause right beneath it. Give a name to your server (e.g. myServer), update the if/else clause accordingly, and when running the script pass the name to the against argument (--against=myServer)
-* engineChrome_harCapturer.py: this is the script you run on the client side that runs things using chrome-har-capturer.
-* doTCstuff.py: this is the script responsible for running TC and NETEM commands for network emulations.
-* engineWrapper.py: this is a wrapper script for engineChrome_harCapturer.py (or engineChrome.py). It runs network emulations, pre-PLT tests if set to True (iperf and ping tests), and the PLT tests (in that order).
-* chromeDrivers: this is the folder that include different chromedriver versions for different Chrome versions. I have included one version here for your convenience. You are responsible of storing the versions you need in this folder. the naming convention is chromedriver_[version] (e.g. chromedriver_2.22). 
+* **engineChrome_harCapturer.py:** this is the script you run on the client side that runs things using chrome-har-capturer.
+* **doTCstuff.py:** this is the script responsible for running TC and NETEM commands for network emulations.
+* **engineWrapper.py:** this is a wrapper script for engineChrome_harCapturer.py (or engineChrome.py). It runs network emulations, pre-PLT tests if set to True (iperf and ping tests), and the PLT tests (in that order).
+* **chromeDrivers:** this is the folder that include different chromedriver versions for different Chrome versions. I have included one version here for your convenience. You are responsible of storing the versions you need in this folder. the naming convention is chromedriver_[version] (e.g. chromedriver_2.22). 
