@@ -1,0 +1,164 @@
+diff --git a/base/logging.cc b/base/logging.cc
+index 70e928a..cbfe7c6 100644
+--- a/base/logging.cc
++++ b/base/logging.cc
+@@ -119,8 +119,8 @@ FileHandle g_log_file = nullptr;
+ // What should be prepended to each message?
+ bool g_log_process_id = false;
+ bool g_log_thread_id = false;
+-bool g_log_timestamp = true;
+-bool g_log_tickcount = false;
++bool g_log_timestamp = false;
++bool g_log_tickcount = true;
+ 
+ // Should we pop up fatal debug messages in a dialog?
+ bool show_error_dialogs = false;
+@@ -834,7 +834,14 @@ void LogMessage::Init(const char* file, int line) {
+   }
+   if (g_log_tickcount)
+     stream_ << TickCount() << ':';
+-  if (severity_ >= 0)
++
++  if (severity_ >= 13)
++    stream_ << "severity_" << -severity_;
++  else if (severity_ >= 0)
++
++//  if (severity_ >= 0)
+     stream_ << log_severity_name(severity_);
+   else
+     stream_ << "VERBOSE" << -severity_;
+diff --git a/net/quic/core/congestion_control/tcp_cubic_sender_base.cc b/net/quic/core/congestion_control/tcp_cubic_sender_base.cc
+index d56fbf8..b42d0e0 100644
+--- a/net/quic/core/congestion_control/tcp_cubic_sender_base.cc
++++ b/net/quic/core/congestion_control/tcp_cubic_sender_base.cc
+@@ -151,6 +151,7 @@ void TcpCubicSenderBase::OnPacketAcked(QuicPacketNumber acked_packet_number,
+   if (InRecovery()) {
+     if (!no_prr_) {
+       // PRR is used when in recovery.
+       prr_.OnPacketAcked(acked_bytes);
+     }
+     return;
+@@ -169,6 +170,7 @@ bool TcpCubicSenderBase::OnPacketSent(
+     QuicByteCount bytes,
+     HasRetransmittableData is_retransmittable) {
+   if (InSlowStart()) {
++	VLOG(-16) << "QUICState:SlowStart";
+     ++(stats_->slowstart_packets_sent);
+   }
+ 
+@@ -178,6 +180,7 @@ bool TcpCubicSenderBase::OnPacketSent(
+   }
+   if (InRecovery()) {
+     // PRR is used when in recovery.
++	VLOG(-16) << "QUICState:Recovery";
+     prr_.OnPacketSent(bytes);
+   }
+   DCHECK_LT(largest_sent_packet_number_, packet_number);
+diff --git a/net/quic/core/congestion_control/tcp_cubic_sender_bytes.cc b/net/quic/core/congestion_control/tcp_cubic_sender_bytes.cc
+index f22bdd0..84280b1 100644
+--- a/net/quic/core/congestion_control/tcp_cubic_sender_bytes.cc
++++ b/net/quic/core/congestion_control/tcp_cubic_sender_bytes.cc
+@@ -170,14 +170,17 @@ void TcpCubicSenderBytes::MaybeIncreaseCwnd(
+     QuicByteCount acked_bytes,
+     QuicByteCount prior_in_flight,
+     QuicTime event_time) {
+   QUIC_BUG_IF(InRecovery()) << "Never increase the CWND during recovery.";
+   // Do not increase the congestion window unless the sender is close to using
+   // the current window.
+   if (!IsCwndLimited(prior_in_flight)) {
++	VLOG(-16) << "QUICState:ApplicationLimited";
+     cubic_.OnApplicationLimited();
+     return;
+   }
+   if (congestion_window_ >= max_congestion_window_) {
++	VLOG(-16) << "QUICState:CongestionAvoidanceMaxed";
+     return;
+   }
+   if (InSlowStart()) {
+@@ -210,6 +213,7 @@ void TcpCubicSenderBytes::MaybeIncreaseCwnd(
+     QUIC_DVLOG(1) << "Cubic; congestion window: " << congestion_window_
+                   << " slowstart threshold: " << slowstart_threshold_;
+   }
++	VLOG(-16) << "QUICState:CongestionAvoidance";
+ }
+ 
+ void TcpCubicSenderBytes::HandleRetransmissionTimeout() {
+diff --git a/net/quic/core/congestion_control/tcp_cubic_sender_packets.cc b/net/quic/core/congestion_control/tcp_cubic_sender_packets.cc
+index 74ebb2f..9f990c2 100644
+--- a/net/quic/core/congestion_control/tcp_cubic_sender_packets.cc
++++ b/net/quic/core/congestion_control/tcp_cubic_sender_packets.cc
+@@ -171,10 +171,12 @@ void TcpCubicSenderPackets::MaybeIncreaseCwnd(
+   // Do not increase the congestion window unless the sender is close to using
+   // the current window.
+   if (!IsCwndLimited(prior_in_flight)) {
++	VLOG(-16) << "QUICState:ApplicationLimited";
+     cubic_.OnApplicationLimited();
+     return;
+   }
+   if (congestion_window_ >= max_tcp_congestion_window_) {
++	VLOG(-16) << "QUICState:CongestionAvoidanceMaxed";
+     return;
+   }
+   if (InSlowStart()) {
+@@ -206,6 +208,7 @@ void TcpCubicSenderPackets::MaybeIncreaseCwnd(
+     QUIC_DVLOG(1) << "Cubic; congestion window: " << congestion_window_
+                   << " slowstart threshold: " << slowstart_threshold_;
+   }
++	VLOG(-16) << "QUICState:CongestionAvoidance";
+ }
+ 
+ void TcpCubicSenderPackets::HandleRetransmissionTimeout() {
+diff --git a/net/quic/core/quic_sent_packet_manager.cc b/net/quic/core/quic_sent_packet_manager.cc
+index 9b3b3dc..40a0616 100644
+--- a/net/quic/core/quic_sent_packet_manager.cc
++++ b/net/quic/core/quic_sent_packet_manager.cc
+@@ -85,6 +85,7 @@ QuicSentPacketManager::QuicSentPacketManager(
+       largest_mtu_acked_(0),
+       handshake_confirmed_(false),
+       largest_packet_peer_knows_is_acked_(0) {
++	VLOG(-16) << "QUICState:Init";
+   SetSendAlgorithm(congestion_control_type);
+ }
+ 
+@@ -259,6 +260,9 @@ void QuicSentPacketManager::OnIncomingAck(const QuicAckFrame& ack_frame,
+                                    unacked_packets_.largest_observed(),
+                                    rtt_updated, GetLeastUnacked());
+   }
++
++VLOG(-16) << "OnInAck--CongWin;BW;rtt;#loss;inRcvry;inSS:" << GetCongestionWindowInBytes() << ";" << send_algorithm_->BandwidthEstimate().ToKBytesPerSecond() << ";" << rtt_stats_.smoothed_rtt().ToMicroseconds() << ";" << stats_->packets_lost << ";" << send_algorithm_->InRecovery() << ";" << send_algorithm_->InSlowStart();
++
+ }
+ 
+ void QuicSentPacketManager::UpdatePacketInformationReceivedByPeer(
+@@ -563,6 +567,7 @@ void QuicSentPacketManager::OnRetransmissionTimeout() {
+       // If no tail loss probe can be sent, because there are no retransmittable
+       // packets, execute a conventional RTO to abandon old packets.
+       ++stats_->tlp_count;
++	VLOG(-16) << "QUICState:TailLossProbe";
+       ++consecutive_tlp_count_;
+       pending_timer_transmission_count_ = 1;
+       // TLPs prefer sending new data instead of retransmitting data, so
+@@ -570,6 +575,7 @@ void QuicSentPacketManager::OnRetransmissionTimeout() {
+       return;
+     case RTO_MODE:
+       ++stats_->rto_count;
++	VLOG(-16) << "QUICState:RetransmissionTimeout";
+       RetransmitRtoPackets();
+       if (network_change_visitor_ != nullptr &&
+           consecutive_rto_count_ == kMinTimeoutsBeforePathDegrading) {
+diff --git a/net/tools/quic/certs/leaf.cnf b/net/tools/quic/certs/leaf.cnf
+index 41c2c15..0fd21da6 100644
+--- a/net/tools/quic/certs/leaf.cnf
++++ b/net/tools/quic/certs/leaf.cnf
+@@ -21,8 +21,8 @@ CN = 127.0.0.1
+ subjectAltName = @other_hosts
+ 
+ [other_hosts]
+-DNS.1 = www.example.org
+-DNS.2 = mail.example.org
+-DNS.3 = mail.example.com
++DNS.1 = quic-project-gcloud-3.meddle.mobi
++DNS.2 = mail.quic-project-gcloud-3.meddle.mobi
++DNS.3 = mail.quic-project-gcloud-3.meddle.mobi
+ IP.1 = 127.0.0.1
+ 
