@@ -1,0 +1,254 @@
+<!-- 
+
+This will send stats as a json file to a server. Minimal server:
+	nc -l 1500 | tail -n 1 | tee events_2.json
+
+-->
+
+<!DOCTYPE html>
+
+<html>
+	<head>
+	<meta charset="utf-8">
+	<!-- <meta name="viewport" content="width=device-width, initial-scale=1"> -->
+	<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.0/jquery.min.js"></script>
+	<script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+	</head>
+  <body>
+
+    <!-- 1. The <iframe> (and video player) will replace this <div> tag. -->
+
+    <div id="countdown" style="display:none"></div>
+   	
+   	<!-- <div id="player" style="display:block; width:100%"></div> -->
+    <div id="player" style="display:block"></div>
+    
+    <div class="container">
+    <div  id="after" style="display:none" >
+	  	<form role="form">
+			<h3 align="center">Thank you!</h3>
+			<h3 align="center">Click below to do more tests :)</h3>
+    		<br>
+    		<button type="button" class="btn btn-default" style="width:100%" onclick="return onMoreTests();">Run more test!</button>
+  		
+		<br><br><br>
+		<table class="table table-bordered" id="events">
+	    <thead>
+	      <tr>
+	        <th>Timestamp</th>
+	        <th>event</th>
+	        <th>data</th>
+	      </tr>
+	    </thead>
+	    <tbody>
+	    </tbody>
+	  </table>
+	
+	</form>
+	</div>
+    <script>
+		var args = {};
+		window.location.href.split('?')[1].split("&").forEach(function(part) {
+		    var item = part.split("=");
+		    args[item[0]] = decodeURIComponent(item[1]);
+		  });
+		  
+	  	var stopTime 		= parseInt(args.stoptime) * 1000;
+	  	var desiredQuality 	= args.quality;
+		var datetime 		 = new Date().toGMTString('');
+		var events 		 	 = [];
+		var started 		 = false;
+		var stopped 		 = false;
+		var ncServer		 = "http://quic-project-gcloud-1.meddle.mobi:55556/";
+		var lat;
+		var lon;
+		getLocation()
+    
+    	//var desiredWidth   = 1920;
+    	//var desiredheight  = 1080;
+    	var desiredWidth   = 1280;
+    	var desiredheight  = 720;
+
+    	var desiredVideoId = 'lGNXVhMLw8o';
+    	//var desiredVideoId = 'z069ldsumxA';
+	   
+      // 2. This code loads the IFrame Player API code asynchronously.
+      var tag = document.createElement('script');
+      tag.src = "https://www.youtube.com/iframe_api";
+      var firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+      // 3. This function creates an <iframe> (and YouTube player)
+      //    after the API code downloads.
+      var player;
+      function onYouTubeIframeAPIReady() {
+    	  player = new YT.Player('player', {
+			  //width     		: desiredWidth.toString(),
+			  //height    		: desiredheight.toString(),
+    		  videoId			: desiredVideoId,
+			  suggestedQuality	: desiredQuality,
+			  
+			  /* 
+			   * IMPORTANT: when I allow autoplay, desiredQuality is not selected! 
+			   */
+			  playerVars		: {'controls': 1, 'enablejsapi' : 1, 'origin' : 'null'},
+    		  events			: {
+				    			   'onReady'				: onPlayerReady,
+					      		   'onStateChange'			: onPlayerStateChange,
+								   'onPlaybackQualityChange': onPlayerPlaybackQualityChange,
+								   'onPlaybackRateChange'	: onPlayerPlaybackRateChange,
+								  }
+        	});
+      }
+		
+      
+		function getLocation() {
+			if (navigator.geolocation) {
+  	        	navigator.geolocation.getCurrentPosition(getPosition);
+  	    	} else { 
+  	    		lat = -1; 
+  		  	    lon = -1;
+  	    	}
+	  	}
+	
+	  	function getPosition(position) {
+	  	    lat = position.coords.latitude; 
+	  	    lon = position.coords.longitude;
+	  	    return 
+	  	}
+
+      function onPlayerReady(event) {
+    	  	event.target.mute();
+      }
+		
+      function onPlayerStateChange(event) {
+			
+    	  console.log('PlayerStateChange:', event.data);
+    	  
+    	    if (stopped) {
+    	    	// After the video is stopped, two state changes are fired, 
+    	    	// an UNSTARTED followed by an CUED. This is to ignore those.
+    	    	return;
+    	    }
+    	  
+	        switch (event.data) {
+	        	case -1:
+	        		if (!started) {
+	        			console.log('asking for quiality change: ', desiredQuality);
+	        			player.setPlaybackQuality(desiredQuality);
+	        		}
+	        		pushEvent('UNSTARTED', event);
+	        		break;
+	        	
+	        	case YT.PlayerState.ENDED:
+	        		pushEvent('ENDED', event);
+	        		break;
+	        	
+	        	case YT.PlayerState.PLAYING:
+	        		pushEvent('PLAYING', event);
+	        		if (!started) {
+						setTimeout(stopVideo, stopTime);
+						document.getElementById("countdown").style.display  = 'block';
+						countdown(stopTime);
+						started = true;
+					}
+	        		break;
+	        	
+	        	case YT.PlayerState.BUFFERING:
+	        		pushEvent('BUFFERING', event);
+	        		break;
+	        	
+	        	case YT.PlayerState.PAUSED:
+	        		pushEvent('PAUSED', event);
+	        		break;
+	        	
+	        	case YT.PlayerState.CUED:
+	        		pushEvent('CUED', event);
+	        		break;
+	        }
+      }
+
+      function onPlayerPlaybackQualityChange(event) {
+    	  	console.log('QualityChange:', event.data);
+    	  	pushEvent('QualityChange', event);
+      }
+
+      function onPlayerPlaybackRateChange(event) {
+    	  	console.log('RateChange:', event.data);
+    	  	pushEvent('RateChange', event);
+      }
+		
+      function onPlayerError(event) {
+      		console.log('PlayerError:', event.data);
+      		pushEvent('PlayerError', event);
+      }
+
+      function stopVideo() {
+    	    console.log('stopping the video');
+    	    stopped = true;
+        	player.stopVideo();
+        	
+        	pushEvent('AvailableQualityLevels', {'data' : player.getAvailableQualityLevels()});
+        	
+      	  	var results = {
+      			  		   'datetime' 		: datetime,
+      			  		   'lon'	  		: lon,
+      			  		   'lat'	  		: lat,
+      			  		   'stopTime' 		: stopTime/1000,
+      			  		   'useragent'		: navigator.userAgent,
+      			  		   'videoID'  		: desiredVideoId,
+      			  		   'desiredQuality' : desiredQuality,
+      			  	   	   'events'   		: events
+      			  	  	  };
+      	  
+      	  	window.arashResults = results;
+        	
+      	  	console.log(results);
+        	
+        	showResults(events);
+        	
+      	  	document.getElementById("after").style.display     = 'block';
+        	document.getElementById("player").style.display    = 'none';
+        	document.getElementById("countdown").style.display = 'none';
+      }
+
+      function pushEvent(eventName, event) {
+    	  var currentTime = new Date().getTime();
+    	  events.push({	'time'					: currentTime, 
+    		  			'event'					: eventName, 
+    		  			'event.data'			: event.data, 
+    		  			'VideoLoadedFraction'	: player.getVideoLoadedFraction(),
+    		  		});
+      }
+
+      
+      function showResults(events) {
+    	  var timeOrigin = events[0].time;
+    	  console.log(timeOrigin);
+    	  var i;
+    	  for (i=0; i<events.length; i++) {
+			 var dTime = ((events[i].time - timeOrigin)/1000).toString(); 
+			 document.getElementById("events").innerHTML += "<tr><td>" + dTime + "</td><td>" + events[i].event + "</td><td>" + events[i]["event.data"] + "</td></tr>";
+    		}
+      }
+      
+		function countdown(seconds_left) {
+			seconds_left = seconds_left/1000;
+			var interval = setInterval(function() {
+			    document.getElementById('countdown').innerHTML = "<h1>Countdown: " + --seconds_left + " seconds</h1>";
+
+			    if (seconds_left <= 0)
+			    {
+			        document.getElementById('countdown').innerHTML = '0';
+			        clearInterval(interval);
+			    }
+			}, 1000);
+		}
+      
+      </script>
+</div>
+  </body>
+
+</html>
+
